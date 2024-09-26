@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Meeting Room</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #fff;
+            text-align: center;
+        }
+        video {
+            width: 45%;
+            border: 1px solid #fff;
+            margin: 5px;
+        }
+        #remoteVideo {
+            display: none; /* Initially hide the remote video */
+        }
+        #controls {
+            display: flex;
+            justify-content: center;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Virtual Meeting Room</h1>
+    <div>
+        <video id="localVideo" autoplay muted></video>
+        <video id="remoteVideo" autoplay></video>
+    </div>
+    <div id="controls">
+        <input type="text" id="username" placeholder="Enter your Username" />
+        <input type="text" id="roomCode" placeholder="Room Code" />
+        <button id="joinBtn">Join Meeting</button>
+        <button id="startBtn">Start Meeting</button>
+    </div>
+
+    <script>
+        let localStream;
+        let remoteStream;
+        let peerConnection;
+        const configuration = {
+            iceServers: [
+                {
+                    urls: 'stun:stun.l.google.com:19302'
+                }
+            ]
+        };
+
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+
+        // Get media stream
+        async function getMediaStream() {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localVideo.srcObject = localStream;
+        }
+
+        async function startMeeting() {
+            peerConnection = new RTCPeerConnection(configuration);
+            // Add local tracks to the peer connection
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+            // When a remote track is added
+            peerConnection.ontrack = event => {
+                remoteVideo.srcObject = event.streams[0];
+                remoteVideo.style.display = 'block'; // Show remote video
+            };
+
+            // Handle ICE candidate
+            peerConnection.onicecandidate = event => {
+                if (event.candidate) {
+                    console.log('New ICE candidate: ', event.candidate);
+                    // You would send this candidate to the signaling server
+                }
+            };
+
+            // Create an offer and set it locally
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            console.log('Created offer: ', offer);
+            // You would send this offer to the signaling server
+        }
+
+        async function joinMeeting() {
+            const roomCode = document.getElementById('roomCode').value;
+            // You would retrieve the offer from the signaling server using the room code
+            const offer = /* Get offer here from signaling server */;
+
+            // When you get the offer
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            console.log('Created answer: ', answer);
+            // You would send this answer back to the signaling server
+        }
+
+        document.getElementById('startBtn').addEventListener('click', async () => {
+            await getMediaStream();
+            await startMeeting();
+        });
+
+        document.getElementById('joinBtn').addEventListener('click', () => {
+            joinMeeting();
+        });
+    </script>
+</body>
+</html>
